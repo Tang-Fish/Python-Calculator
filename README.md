@@ -1,3 +1,8 @@
 # Python-Calculator
 Download the Main.py file and open in your preferred IDE
-It should show the code, press run and wait a few seconds for the screen to show up.
+
+Instructions
+1. Run "pip install sympy matplotlib numpy" in the terminal
+2. Then run "python -m pip install sympy matplotlib numpy" also in the terminal
+
+Click the run button and you should be done!
