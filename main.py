@@ -1,6 +1,11 @@
-import math
 import tkinter as tk
 from tkinter import messagebox
+import numpy as np
+import sympy as sp
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from mpl_toolkits.mplot3d import Axes3D
+import math
 
 # SymPy
 try:
@@ -18,7 +23,7 @@ except ImportError:
     HAS_MATPLOTLIB = False
 
 # Main Code 
-class MultiModeCalculator:
+class Calculator:
     def __init__(self, root):
         self.root = root
         self.root.title("Advanced Calculator")
@@ -40,6 +45,7 @@ class MultiModeCalculator:
         self.init_calc_screen()
         self.init_algebra_screen()
         self.init_graph_screen()
+        self.init_graph3d_screen()
 
         self.show_screen("Menu")
 
@@ -59,7 +65,7 @@ class MultiModeCalculator:
             fg="#cdd6f4",
             bg="#1e1e2e"
         )
-        title.pack(pady=(60, 40))
+        title.pack(pady=(40, 20))
 
         btn_style = {
             "font": ("Arial", 14, "bold"),
@@ -77,7 +83,7 @@ class MultiModeCalculator:
             command=lambda: self.show_screen("Calculator"),
             **btn_style
         )
-        calc_btn.pack(fill=tk.X, padx=40, pady=15)
+        calc_btn.pack(fill=tk.X, padx=40, pady=10)
 
         algebra_btn = tk.Button(
             frame,
@@ -87,7 +93,7 @@ class MultiModeCalculator:
             command=lambda: self.show_screen("Algebra Solver"),
             **btn_style
         )
-        algebra_btn.pack(fill=tk.X, padx=40, pady=15)
+        algebra_btn.pack(fill=tk.X, padx=40, pady=10)
 
         graph_btn = tk.Button(
             frame,
@@ -97,7 +103,17 @@ class MultiModeCalculator:
             command=lambda: self.show_screen("Grapher"),
             **btn_style
         )
-        graph_btn.pack(fill=tk.X, padx=40, pady=15)
+        graph_btn.pack(fill=tk.X, padx=40, pady=10)
+
+        graph3d_btn = tk.Button(
+            frame,
+            text="3D Surface Grapher",
+            bg="#cba6f7",
+            fg="#11111b",
+            command=lambda: self.show_screen("Grapher3D"),
+            **btn_style
+        )
+        graph3d_btn.pack(fill=tk.X, padx=40, pady=10)
 
     # Scientific Calculator Screen
     def init_calc_screen(self):
@@ -412,8 +428,93 @@ class MultiModeCalculator:
         except Exception:
             messagebox.showerror("Graph Error", "Invalid Equation")
 
+    def init_graph3d_screen(self):
+        frame = tk.Frame(self.container)
+        self.frames["Grapher3D"] = frame
+        frame.grid(row=0, column=0, sticky="nsew")
+
+        top_bar = tk.Frame(frame, bg='#e0e0e0')
+        top_bar.pack(fill=tk.X, padx=10, pady=(10, 0))
+        tk.Button(
+            top_bar, text="☰ Switch Modes", font=("Arial", 10, "bold"),
+            bg="#2196F3", fg='white', command=lambda: self.show_screen('Menu')
+        ).pack(side=tk.LEFT, padx=5, pady=5)
+
+        input_frame = tk.Frame(frame)
+        input_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        tk.Label(input_frame, text="z =", font=("Arial", 14, "bold")).pack(side=tk.LEFT, padx=(0,5))
+
+        self.graph3d_entry = tk.Entry(input_frame, font=("Arial", 14))
+        self.graph3d_entry.insert(0, "sin(sqrt(x^2 + y^2))")
+        self.graph3d_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+
+        tk.Button(
+            input_frame, text="PLOT 3D", font=("Arial", 11,"bold"),
+            bg="#cba6f7", fg="#11111b", command=self.plot_graph3d
+        ).pack(side=tk.RIGHT, padx=5)
+
+        self.plot3d_container = tk.Frame(frame, bg='#ffffff', bd=2, relief=tk.SUNKEN)
+        self.plot3d_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+
+        if HAS_MATPLOTLIB:
+            self.fig3d = plt.Figure(figsize=(5, 4), dpi=100)
+            self.ax3d = self.fig3d.add_subplot(111, projection='3d')
+            self.canvas3d = FigureCanvasTkAgg(self.fig3d, master=self.plot3d_container)
+            self.canvas3d.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            self.plot_graph3d()
+        else:
+            tk.Label(
+                self.plot3d_container,
+                text="Install matplotlib and numpy",
+                font=("Arial", 12), fg="red", bg="white"
+            ).pack(expand=True)
+
+    def plot_graph3d(self):
+        if not HAS_MATPLOTLIB:
+            return
+
+        expr_str = self.graph3d_entry.get().strip()
+        if not expr_str:
+            return
+
+        try:
+            self.ax3d.clear()
+            x = np.linspace(-5, 5, 60)
+            y = np.linspace(-5, 5, 60)
+            X, Y = np.meshgrid(x, y)
+
+            clean_expr = expr_str.replace('^', "**")
+            allowed_context = {
+                "x": X,
+                "y": Y,
+                "np": np,
+                "sin": np.sin,
+                "cos": np.cos,
+                "tan": np.tan,
+                "log": np.log10,
+                "ln": np.log,
+                "sqrt": np.sqrt,
+                "pi": np.pi,
+                "e": np.e
+            }
+
+            Z = eval(clean_expr, {"__builtins__": None}, allowed_context)
+
+            if isinstance(Z, (int, float)):
+                Z = np.full_like(X, float(Z))
+
+            self.ax3d.plot_surface(X, Y, Z, cmap='viridis', edgecolor='none', antialiased=True)
+            self.ax3d.set_xlabel('X')
+            self.ax3d.set_ylabel('Y')
+            self.ax3d.set_zlabel('Z')
+
+            self.canvas3d.draw()
+        except Exception:
+            messagebox.showerror("Graph Error", "Invalid Equation")
+
 # Run
 if __name__ == "__main__":
     root = tk.Tk()
-    app = MultiModeCalculator(root)
+    app = Calculator(root)
     root.mainloop()
